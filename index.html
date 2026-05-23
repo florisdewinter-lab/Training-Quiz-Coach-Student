@@ -225,22 +225,20 @@ function updateModules(){
 // ── SUBMIT RESULT ─────────────────────────────────────────────────────────────
 function submitResult(session){
   if(!state.studentName) return;
-  var payload={
-    date: session.date,
-    studentName: state.studentName,
-    moduleName: session.moduleName,
-    moduleId: session.moduleId,
-    score: session.score,
-    passed: session.passed,
-    totalQuestions: session.totalQuestions,
-    correctCount: session.correctCount,
-    topicBreakdown: session.topicBreakdown,
-  };
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload),
-  }).catch(function(){ /* silent fail */ });
+  var params=[
+    'action=submit_result',
+    'date='+encodeURIComponent(session.date),
+    'studentName='+encodeURIComponent(state.studentName),
+    'moduleName='+encodeURIComponent(session.moduleName),
+    'moduleId='+encodeURIComponent(session.moduleId||''),
+    'score='+encodeURIComponent(session.score),
+    'passed='+encodeURIComponent(session.passed),
+    'totalQuestions='+encodeURIComponent(session.totalQuestions),
+    'correctCount='+encodeURIComponent(session.correctCount),
+    'topicBreakdown='+encodeURIComponent(JSON.stringify(session.topicBreakdown)),
+  ];
+  fetch(SCRIPT_URL+'?'+params.join('&'))
+    .catch(function(){ /* silent fail */ });
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
