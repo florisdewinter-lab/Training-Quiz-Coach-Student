@@ -122,6 +122,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var MODULES_URL = 'https://florisdewinter-lab.github.io/Training-Quiz-Coach/modules.json';
+var SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+
+function submitResult(session){
+  // Load script URL from localStorage if saved
+  try{ var _su=localStorage.getItem('qc_script_url'); if(_su) SCRIPT_URL=_su; }catch(e){}
+  if(!SCRIPT_URL||SCRIPT_URL==='PASTE_YOUR_APPS_SCRIPT_URL_HERE') return;
+  if(!state.studentName) return; // need a name to submit
+  var payload={
+    date: session.date,
+    studentName: state.studentName,
+    moduleName: session.moduleName,
+    moduleId: session.moduleId,
+    score: session.score,
+    passed: session.passed,
+    totalQuestions: session.totalQuestions,
+    correctCount: session.correctCount,
+    topicBreakdown: session.topicBreakdown,
+  };
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  }).catch(function(){
+    // Silent fail — result is still saved locally
+  });
+}
 
 var state = {
   page: 'home',
@@ -538,6 +564,8 @@ function finishQuiz(){
     if(quiz.answers[q.id]===q.correctIndex)tb[q.topic].correct++;
   });
   state.sessions.push({id:uid(),moduleId:quiz.moduleId,moduleName:quiz.moduleName,questions:quiz.questions,answers:quiz.answers,totalQuestions:quiz.questions.length,correctCount:cc,score:score,passed:score>=state.passMark,topicBreakdown:tb,date:nowISO(),durationSeconds:quiz.elapsed});
+  var _lastSession=state.sessions[state.sessions.length-1];
+  submitResult(_lastSession);
   state.activeQuiz=null;
   saveState();
   navigate('results');
@@ -754,6 +782,7 @@ if('serviceWorker' in navigator){
   });
 }
 loadState();
+try{ var _su=localStorage.getItem('qc_script_url'); if(_su) SCRIPT_URL=_su; }catch(e){}
 if(state.theme==='light') document.documentElement.setAttribute('data-theme','light');
 document.getElementById('theme-btn').textContent=state.theme==='dark'?'☀':'🌙';
 renderNav();
