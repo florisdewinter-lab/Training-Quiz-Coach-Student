@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quiz-student-v2';
+const CACHE_NAME = 'quiz-student-v3';
 const ASSETS = [
   '/Training-Quiz-Coach-Student/',
   '/Training-Quiz-Coach-Student/index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
@@ -17,7 +18,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
 });
 
