@@ -121,8 +121,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
-var MODULES_URL = 'https://florisdewinter-lab.github.io/Training-Quiz-Coach/modules.json';
-var SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+// Modules are now fetched from Apps Script directly
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyi3DoeIjP9elCH7p1-N9KbUyC_B-4pciP9aRUXCiQOHAcFip0MoXF5xwYVR30T1ieU/exec';
 
 function submitResult(session){
   // Load script URL from localStorage if saved
@@ -212,14 +212,19 @@ function topicPerf(sessions){
 
 // ── UPDATE FROM CREATOR ───────────────────────────────────────────────────────
 function updateModules(){
+  if(!SCRIPT_URL){
+    showToast('❌ No server URL configured. Contact your instructor.', true);
+    return;
+  }
   var btn=document.getElementById('update-btn');
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Updating...'; }
-  fetch(MODULES_URL+'?t='+Date.now())
+  fetch(SCRIPT_URL+'?action=get_modules&t='+Date.now())
     .then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status);
       return r.json();
     })
     .then(function(data){
+      if(data.status==='error') throw new Error(data.message||'No modules found');
       if(!data.modules||!data.modules.length) throw new Error('No modules found');
       state.modules=data.modules;
       state.lastUpdated=data.version||nowISO();
@@ -243,11 +248,12 @@ function showToast(msg, isErr){
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
 var NAV=[
-  {id:'home',   icon:'⬡', label:'Home'},
-  {id:'quiz',   icon:'▶', label:'Start Quiz'},
-  {id:'results',icon:'📋',label:'Results'},
-  {id:'progress',icon:'📊',label:'Progress'},
-  {id:'attention',icon:'⚠',label:'Attention'},
+  {id:'home',      icon:'⬡', label:'Home'},
+  {id:'quiz',      icon:'▶', label:'Start Quiz'},
+  {id:'results',   icon:'📋',label:'Results'},
+  {id:'progress',  icon:'📊',label:'Progress'},
+  {id:'attention', icon:'⚠', label:'Attention'},
+  {id:'settings',  icon:'⚙', label:'Settings'},
 ];
 
 function navigate(page){
@@ -279,6 +285,7 @@ function renderPage(){
     case 'results':  el.innerHTML=renderResults(); break;
     case 'progress': el.innerHTML=renderProgress(); break;
     case 'attention':el.innerHTML=renderAttention(); break;
+    case 'settings':el.innerHTML=renderStudentSettings(); break;
   }
 }
 
@@ -757,6 +764,51 @@ function renderAttention(){
   else { weak.slice(0,5).forEach(function(t){ var a=Math.round(tp[t].avg); html+='<div style="padding:11px 13px;background:var(--bg3);border-radius:8px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Review: <span style="color:var(--ac2)">'+esc(t)+'</span></div><div style="font-size:11px;color:var(--tx2)">Score: '+a+'% · Gap: '+Math.max(0,75-a)+'%</div></div><span class="badge b-fail">Focus</span></div>'; }); }
   html+='</div>';
   return html;
+}
+
+
+// ── STUDENT SETTINGS ─────────────────────────────────────────────────────────
+function renderStudentSettings(){
+  var html='<div style="max-width:500px">';
+  html+='<div class="sh"><div><div class="st">Settings</div></div></div>';
+
+  html+='<div class="card"><div class="ct">Appearance</div>';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:13px;font-weight:600">Theme</div>';
+  html+='<div class="tog"><button class="tog-b'+(state.theme==='dark'?' active':'')+'" onclick="setStudentTheme('dark')">🌙 Dark</button><button class="tog-b'+(state.theme==='light'?' active':'')+'" onclick="setStudentTheme('light')">☀ Light</button></div></div></div>';
+
+  html+='<div class="card"><div class="ct">Your Name</div>';
+  html+='<div style="font-size:13px;color:var(--tx2);margin-bottom:10px">This is shown in your coach's reports.</div>';
+  html+='<div style="display:flex;gap:8px"><input class="inp" id="s-name" placeholder="Your name..." value="'+esc(state.studentName)+'"><button class="btn btn-p btn-sm" onclick="saveStudentName()">Save</button></div></div>';
+
+  html+='<div class="card"><div class="ct">Server URL</div>';
+  html+='<div style="font-size:13px;color:var(--tx2);margin-bottom:10px;line-height:1.6">Paste the URL provided by your instructor to connect to the question bank.</div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:8px"><input class="inp" id="s-url" placeholder="https://script.google.com/macros/s/..." value="'+esc(SCRIPT_URL==='PASTE_YOUR_APPS_SCRIPT_URL_HERE'?'':SCRIPT_URL)+'"><button class="btn btn-p btn-sm" onclick="saveStudentURL()">Save</button></div>';
+  html+='<div style="font-size:11px;color:var(--tx3)">Ask your instructor for this URL if you don't have it.</div></div>';
+
+  html+='</div>';
+  return html;
+}
+
+function saveStudentName(){
+  var el=document.getElementById('s-name');
+  if(el&&el.value.trim()){state.studentName=el.value.trim();saveState();showToast('✅ Name saved!');}
+}
+
+function saveStudentURL(){
+  var el=document.getElementById('s-url');
+  if(el&&el.value.trim()){
+    SCRIPT_URL=el.value.trim();
+    try{localStorage.setItem('qc_script_url',SCRIPT_URL);}catch(e){}
+    showToast('✅ URL saved! Tap Update Questions to load your modules.');
+  }
+}
+
+function setStudentTheme(t){
+  state.theme=t;
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('theme-btn').textContent=t==='dark'?'☀':'🌙';
+  saveState();
+  renderPage();
 }
 
 // ── THEME & SIDEBAR ───────────────────────────────────────────────────────────
