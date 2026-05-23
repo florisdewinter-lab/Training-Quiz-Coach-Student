@@ -201,14 +201,15 @@ function showToast(msg, isErr){
 }
 
 // ── UPDATE MODULES ────────────────────────────────────────────────────────────
+var MODULES_URL = 'https://raw.githubusercontent.com/florisdewinter-lab/Training-Quiz-Coach/main/modules.json';
+
 function updateModules(){
   var btn=document.getElementById('update-btn');
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Updating...'; }
-  fetch(SCRIPT_URL+'?action=get_modules&t='+Date.now())
+  fetch(MODULES_URL+'?t='+Date.now())
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(data){
-      if(data.status==='error') throw new Error(data.message||'No modules found');
-      if(!data.modules||!data.modules.length) throw new Error('No modules published yet');
+      if(!data.modules||!data.modules.length) throw new Error('No modules found');
       state.modules=data.modules;
       state.lastUpdated=data.version||nowISO();
       saveState();
